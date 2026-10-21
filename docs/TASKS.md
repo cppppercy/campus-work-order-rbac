@@ -2,10 +2,10 @@
 
 包根：`edu.campus.rbac`。共享模型位于 `model.Models`，服务接口位于 `service.Services`。
 
-数据库代理：Database、Passwords、schema.sql、seed.sql、数据库测试。
-权限代理：Access、SessionRegistry、SecurityServices、权限测试。
-GUI 代理：ui 和 event 包、GUI 测试。
-主代理：工单、统计、审计服务；共享契约；构建；集成；文档；GitHub 同步。
+数据库模块：Database、Passwords、schema.sql、seed.sql、数据库测试（完成）。
+权限模块：Access、SessionRegistry、SecurityServices、权限测试（完成）。
+GUI 模块：ui 和 event 包、GUI 测试（完成）。
+集成模块：工单、统计、审计服务；共享契约；构建；文档；GitHub 同步（完成）。
 
 Database(Path).initialize() 初始化；read/write 接收可抛 SQLException 的连接函数。write 使用 BEGIN IMMEDIATE，正常 COMMIT，异常 ROLLBACK。每连接外键开启，busy_timeout=5000。
 Passwords.hash(char[]) 返回含算法/迭代/盐/哈希的字符串；verify(char[], String) 验证。
