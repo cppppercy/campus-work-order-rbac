@@ -86,6 +86,7 @@ java -jar target\campus-work-order-rbac.jar --help
 
 - 初次下载 Maven/GitHub CLI 时，沙箱内 Windows TLS 凭据不可用；经授权在沙箱外下载官方便携包后解决。便携工具位于被忽略的 `.tools/`，未提交。
 - 初次截图在数据异步加载完成前生成，表格为空；GUI 测试增加等待真实行数的条件后重跑，最终截图包含工单和角色数据。
+- 首次 GitHub Actions 使用 `bash mvnw`，Wrapper 将脚本名误判为目录并在 Ubuntu 失败；工作流改为从仓库根执行 `./mvnw`，并升级 checkout/setup-java action 后重新验证。
 - Maven Shade 报告依赖 JAR 中许可证与 Manifest 元数据重叠；可执行 JAR、驱动加载和初始化实测正常，该警告不影响运行。
 
 ## 尚未自动化的内容
