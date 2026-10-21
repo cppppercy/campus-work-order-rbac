@@ -45,6 +45,10 @@ java -jar target\campus-work-order-rbac.jar --help
 
 结果：数据库初始化成功，生成 90,112 字节 SQLite 文件；帮助参数正常输出。打包 JAR 为 14,425,195 字节，包含 SQLite 驱动。
 
+### GitHub Actions 双平台构建
+
+最终工作流运行 [39606457493](https://github.com/cppppercy/campus-work-order-rbac/actions/runs/39606457493) 实际完成：Ubuntu 作业 47 秒、Windows 作业 1 分 7 秒，两个作业的构建、测试和产物上传均成功。
+
 ## TC01–TC20 验收映射
 
 | 用例 | 结果 | 自动化证据 |
@@ -91,4 +95,4 @@ java -jar target\campus-work-order-rbac.jar --help
 
 ## 尚未自动化的内容
 
-自动 GUI 测试没有逐个点击所有模态编辑对话框或系统文件选择器；这些操作的 Service 与数据库行为由非 GUI 验收测试覆盖，课堂演示按 `DEMO.md` 手工复核。GitHub Actions 的云端结果需在最终推送后由 GitHub 运行，本报告不预先声称其通过。
+自动 GUI 测试没有逐个点击所有模态编辑对话框或系统文件选择器；这些操作的 Service 与数据库行为由非 GUI 验收测试覆盖，课堂演示按 `DEMO.md` 手工复核。
