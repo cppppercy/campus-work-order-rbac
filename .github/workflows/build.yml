@@ -14,11 +14,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
       - name: Build and test
         shell: bash
         run: ./mvnw --batch-mode clean verify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: campus-rbac-${{ matrix.os }}
           path: |
