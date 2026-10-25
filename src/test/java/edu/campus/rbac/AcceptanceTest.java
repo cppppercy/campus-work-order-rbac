@@ -25,7 +25,25 @@ class AcceptanceTest {
     @Test void TC03to05_viewerCanReadButCannotCreateOrDelete(){String t=login("viewer");List<WorkOrder> before=services.workOrders().list(t,"","");assertFalse(before.isEmpty());assertThrows(DomainException.class,()->services.workOrders().create(t,new WorkOrderInput("拒绝","test")));assertThrows(DomainException.class,()->services.workOrders().delete(t,before.get(0).id()));assertEquals(before,services.workOrders().list(t,"",""));}
     @Test void TC06to07_staffCreatePersistsButCannotDelete(){String t=login("staff");WorkOrder w=services.workOrders().create(t,new WorkOrderInput("维修灯具","教室 A101"));assertThrows(DomainException.class,()->services.workOrders().delete(t,w.id()));Services.Bundle reopened=ApplicationFactory.open(db);String other=reopened.authentication().login("staff","Demo@12345".toCharArray()).token();assertTrue(reopened.workOrders().list(other,"维修灯具","").stream().anyMatch(x->x.id()==w.id()));}
     @Test void TC08to09_managerAssignsButCannotGrant(){String manager=login("manager");long id=services.workOrders().list(manager,"","").get(0).id();User assignee=services.workOrders().assignees(manager).stream().filter(u->u.username().equals("staff")).findFirst().orElseThrow();services.workOrders().assign(manager,id,assignee.id());assertEquals(assignee.id(),services.workOrders().list(manager,Long.toString(id),"").get(0).assigneeId());assertThrows(DomainException.class,()->services.roles().setPermissions(manager,1,Set.of()));}
-    @Test void TC10to13_grantAndRevokeApplyToExistingSession(){String a=login("admin"),s=login("staff");long r=role(a,"STAFF"),p=permission(a,"workorder:delete");Set<Long> original=services.roles().permissionIds(a,r);Set<Long> added=new HashSet<>(original);added.add(p);WorkOrder w=services.workOrders().create(s,new WorkOrderInput("临时工单",""));assertThrows(DomainException.class,()->services.workOrders().delete(s,w.id()));services.roles().setPermissions(a,r,added);assertTrue(services.permissions().refresh(s).permissions().contains("workorder:delete"));services.workOrders().delete(s,w.id());WorkOrder next=services.workOrders().create(s,new WorkOrderInput("撤权后保留",""));services.roles().setPermissions(a,r,original);assertThrows(DomainException.class,()->services.workOrders().delete(s,next.id()));assertTrue(services.workOrders().list(s,"撤权后保留","").stream().anyMatch(x->x.id()==next.id()));}
+    @Test void TC10to13_grantAndRevokeApplyToExistingSession(){
+        String a=login("admin"),s=login("staff");
+        long r=role(a,"STAFF"),p=permission(a,"workorder:delete");
+        Set<Long> original=services.roles().permissionIds(a,r);
+        Set<Long> added=new HashSet<>(original);added.add(p);
+        WorkOrder w=services.workOrders().create(s,new WorkOrderInput("临时工单",""));
+        assertThrows(DomainException.class,()->services.workOrders().delete(s,w.id()));
+        services.roles().setPermissions(a,r,added);
+        assertTrue(services.permissions().refresh(s).permissions().contains("workorder:delete"));
+        services.workOrders().delete(s,w.id());
+        WorkOrder next=services.workOrders().create(s,new WorkOrderInput("撤权后保留",""));
+        services.roles().setPermissions(a,r,original);
+        assertThrows(DomainException.class,()->services.workOrders().delete(s,next.id()));
+        assertTrue(services.workOrders().list(s,"撤权后保留","").stream().anyMatch(x->x.id()==next.id()));
+        Services.Bundle reopened=ApplicationFactory.open(db);
+        String afterRestart=reopened.authentication().login("staff","Demo@12345".toCharArray()).token();
+        assertFalse(reopened.permissions().refresh(afterRestart).permissions().contains("workorder:delete"));
+        assertThrows(DomainException.class,()->reopened.workOrders().delete(afterRestart,next.id()));
+    }
     @Test void TC14_multipleRolesUseUnion(){String a=login("admin");long viewer=user(a,"viewer");services.users().setRoles(a,viewer,Set.of(role(a,"VIEWER"),role(a,"MANAGER")));Session s=services.authentication().login("viewer","Demo@12345".toCharArray());assertTrue(s.permissions().containsAll(Set.of("workorder:list","workorder:assign","report:view")));assertFalse(s.permissions().contains("permission:grant"));}
     @Test void TC15and19_restartPreservesAuthorizationAndWork(){String a=login("admin");long r=role(a,"STAFF"),p=permission(a,"workorder:create");Set<Long> ids=new HashSet<>(services.roles().permissionIds(a,r));ids.remove(p);services.roles().setPermissions(a,r,ids);WorkOrder w=services.workOrders().create(a,new WorkOrderInput("持久化证据","内容"));Services.Bundle next=ApplicationFactory.open(db);String s=next.authentication().login("staff","Demo@12345".toCharArray()).token();assertFalse(next.permissions().refresh(s).permissions().contains("workorder:create"));assertTrue(next.workOrders().list(s,"持久化证据","").stream().anyMatch(x->x.id()==w.id()));}
     @Test void TC16and17_forbiddenRoleAndPageAccess(){String s=login("staff");assertThrows(DomainException.class,()->services.users().setRoles(s,3,Set.of(1L)));assertThrows(DomainException.class,()->services.permissions().require(s,"page:users:view"));assertThrows(DomainException.class,()->services.roles().setPermissions(s,3,Set.of()));}

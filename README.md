@@ -95,7 +95,7 @@ docs/               需求、设计、分析、演示和测试报告
 .\mvnw.cmd -Pgui-tests test
 ```
 
-最后一次本地验收结果见 [测试报告](docs/TEST_REPORT.md)。详细设计见 [系统设计](docs/DESIGN.md)，课堂操作顺序见 [演示手册](docs/DEMO.md)。
+教师阅读入口见 [课程报告](docs/COURSE_REPORT.md)，最后一次本地验收结果见 [测试报告](docs/TEST_REPORT.md)。详细设计见 [系统设计](docs/DESIGN.md)，课堂操作顺序见 [演示手册](docs/DEMO.md)。
 
 ## 查看数据库授权
 

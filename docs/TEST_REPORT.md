@@ -2,7 +2,7 @@
 
 ## 测试环境
 
-- 日期：2026-10-21（Asia/Shanghai）
+- 日期：2026-10-25（Asia/Shanghai）
 - 操作系统：Windows 11 10.0 amd64
 - Java：Oracle JDK 17.0.14
 - Maven：项目 Wrapper 固定 Apache Maven 3.9.9
@@ -34,16 +34,18 @@
 .\mvnw.cmd -Pgui-tests test
 ```
 
-结果：`BUILD SUCCESS`，2 项，0 失败、0 错误、0 跳过。`GuiDatabaseTest` 使用真实数据库和正式 Service 登录 admin 与 viewer，检查菜单、同一工单页的按钮状态和实际表数据；`GuiTest` 使用可观测测试服务检查页面权限调用、刷新权限和后台线程。测试生成四张 1180×760 组件截图并已逐张检查，保存在 `docs/images/`。
+结果：`BUILD SUCCESS`，3 项，0 失败、0 错误、0 跳过。其中 `GuiDatabaseTest` 的 2 项测试使用临时真实 SQLite 和正式 Service：登录 ADMIN、STAFF 与 VIEWER，检查菜单、同一工单页按钮状态、实际表数据、权限配置弹窗的取消/保存，以及删除确认弹窗的取消/确认；`GuiTest` 的 1 项测试使用可观测测试服务检查页面权限调用、刷新权限和后台线程。测试生成 8 张真实 Swing 组件截图并已逐张检查，保存在 `docs/images/`。
+
+动态授权 GUI 流程已实际完成：ADMIN 在分组弹窗中给 STAFF 增加 `workorder:delete`，保存后数据库关联存在；STAFF 登录后删除按钮可用。随后由另一管理员会话撤销权限，STAFF 在同一会话刷新后删除按钮禁用。服务层的授予后实际删除、撤权后立即拒绝和重启持久化由 `AcceptanceTest` 使用同类真实数据库继续验证。
 
 ### 可执行 JAR 冒烟测试
 
 ```powershell
-java -jar target\campus-work-order-rbac.jar --db target\jar-smoke\campus.db --init-only
-java -jar target\campus-work-order-rbac.jar --help
+java "-Dfile.encoding=UTF-8" -jar target\campus-work-order-rbac.jar --db target\final-smoke.db --init-only
+java "-Dfile.encoding=UTF-8" -jar target\campus-work-order-rbac.jar --help
 ```
 
-结果：数据库初始化成功，生成 90,112 字节 SQLite 文件；帮助参数正常输出。打包 JAR 为 14,425,195 字节，包含 SQLite 驱动。
+结果：数据库初始化成功，生成 90,112 字节 SQLite 文件；帮助参数正常输出。打包 JAR 为 14,431,795 字节，包含 SQLite 驱动。
 
 ### GitHub Actions 双平台构建
 
@@ -62,9 +64,9 @@ java -jar target\campus-work-order-rbac.jar --help
 | TC07 STAFF 不能删除 | 通过 | AcceptanceTest |
 | TC08 MANAGER 分派 | 通过 | AcceptanceTest |
 | TC09 MANAGER 不能配置权限 | 通过 | AcceptanceTest、SecurityTest |
-| TC10 ADMIN 给 STAFF 增加删除权 | 通过 | AcceptanceTest |
-| TC11 刷新/旧会话获得新增权限 | 通过 | AcceptanceTest |
-| TC12 撤销后 STAFF 不能删除 | 通过 | AcceptanceTest、SecurityTest |
+| TC10 ADMIN 给 STAFF 增加删除权 | 通过 | AcceptanceTest、GuiDatabaseTest 权限弹窗 |
+| TC11 刷新/旧会话获得新增权限 | 通过 | AcceptanceTest、GuiDatabaseTest 按钮启用 |
+| TC12 撤销后 STAFF 不能删除 | 通过 | AcceptanceTest、SecurityTest、GuiDatabaseTest 按钮禁用 |
 | TC13 绕过 UI 调 Service 被拒 | 通过 | AcceptanceTest |
 | TC14 多角色权限并集 | 通过 | AcceptanceTest |
 | TC15 重启后数据和授权保留 | 通过 | AcceptanceTest、DatabaseTest |
@@ -90,9 +92,11 @@ java -jar target\campus-work-order-rbac.jar --help
 
 - 初次下载 Maven/GitHub CLI 时，沙箱内 Windows TLS 凭据不可用；经授权在沙箱外下载官方便携包后解决。便携工具位于被忽略的 `.tools/`，未提交。
 - 初次截图在数据异步加载完成前生成，表格为空；GUI 测试增加等待真实行数的条件后重跑，最终截图包含工单和角色数据。
+- 本轮首次截取删除确认弹窗时沿用了主窗口 10 KB 的图片大小阈值，导致正常的小型弹窗截图被误判；测试按窗口类型设置合理阈值后通过。
+- GUI 测试关闭临时数据库时发现异步注销审计与临时目录清理存在竞态；测试改为等待注销服务完成，最终连续执行通过。
 - 首次 GitHub Actions 使用 `bash mvnw`，Wrapper 将脚本名误判为目录并在 Ubuntu 失败；工作流改为从仓库根执行 `./mvnw`，并升级 checkout/setup-java action 后重新验证。
 - Maven Shade 报告依赖 JAR 中许可证与 Manifest 元数据重叠；可执行 JAR、驱动加载和初始化实测正常，该警告不影响运行。
 
 ## 尚未自动化的内容
 
-自动 GUI 测试没有逐个点击所有模态编辑对话框或系统文件选择器；这些操作的 Service 与数据库行为由非 GUI 验收测试覆盖，课堂演示按 `DEMO.md` 手工复核。
+自动 GUI 测试已覆盖本次重点模态框：新增工单表单、角色权限配置、删除确认及其取消/确认分支。尚未逐个点击用户/角色的全部编辑弹窗，也未自动操作系统文件选择器；相关 Service 与数据库行为由非 GUI 验收测试覆盖，课堂展示仍应按 `DEMO.md` 人工复核窗口缩放、投影清晰度和 CSV 保存位置。
