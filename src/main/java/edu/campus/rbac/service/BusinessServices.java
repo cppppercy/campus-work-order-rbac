@@ -34,16 +34,29 @@ public final class BusinessServices implements Services.WorkOrders, Services.Rep
     }
     @Override public List<User> assignees(String token){
         return access.read(token,"workorder:assignees","users",Set.of("workorder:assign"),(c,actor)->{
+            boolean canAssignSystemManagers=hasSystemManagement(c,actor);
             List<User> result=new ArrayList<>();try(PreparedStatement p=c.prepareStatement("SELECT id,username,display_name,active FROM users WHERE active=1 ORDER BY id");ResultSet r=p.executeQuery()){
-                while(r.next())result.add(new User(r.getLong(1),r.getString(2),r.getString(3),true,List.of()));}return List.copyOf(result);
+                while(r.next()){
+                    long candidate=r.getLong(1);
+                    if(canAssignSystemManagers||!hasSystemManagement(c,candidate))
+                        result.add(new User(candidate,r.getString(2),r.getString(3),true,List.of()));
+                }}return List.copyOf(result);
         });
     }
     @Override public void assign(String token,long id,Long assigneeId){
         access.write(token,"workorder:assign",Long.toString(id),Set.of("workorder:assign"),(c,actor)->{
-            if(assigneeId!=null)try(PreparedStatement p=c.prepareStatement("SELECT id FROM users WHERE id=? AND active=1")){p.setLong(1,assigneeId);try(ResultSet r=p.executeQuery()){if(!r.next())throw new DomainException("负责人不存在或已停用");}}
+            if(assigneeId!=null)try(PreparedStatement p=c.prepareStatement("SELECT id FROM users WHERE id=? AND active=1")){p.setLong(1,assigneeId);try(ResultSet r=p.executeQuery()){
+                if(!r.next())throw new DomainException("负责人不存在或已停用");
+                if(!hasSystemManagement(c,actor)&&hasSystemManagement(c,assigneeId))
+                    throw new DomainException("没有权限向系统管理员分派工单");
+            }}
             try(PreparedStatement p=c.prepareStatement("UPDATE work_orders SET assignee_id=?,updated_at=? WHERE id=?")){
                 if(assigneeId==null)p.setNull(1,Types.INTEGER);else p.setLong(1,assigneeId);p.setString(2,Instant.now().toString());p.setLong(3,id);changed(p.executeUpdate());}return null;
         });
+    }
+    /** 依据实际授权识别系统管理能力，不依赖 ADMIN 角色名称。 */
+    private static boolean hasSystemManagement(Connection connection,long userId)throws SQLException{
+        return Access.effectivePermissions(connection,userId).contains("permission:grant");
     }
     @Override public void changeStatus(String token,long id,String status){
         access.write(token,"workorder:status",Long.toString(id),Set.of("workorder:update"),(c,actor)->{

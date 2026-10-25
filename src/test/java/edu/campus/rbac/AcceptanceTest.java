@@ -24,7 +24,17 @@ class AcceptanceTest {
     @Test void TC02_adminCanLogin(){Session s=services.authentication().login("admin","Demo@12345".toCharArray());assertTrue(s.permissions().contains("permission:grant"));assertFalse(s.token().isBlank());}
     @Test void TC03to05_viewerCanReadButCannotCreateOrDelete(){String t=login("viewer");List<WorkOrder> before=services.workOrders().list(t,"","");assertFalse(before.isEmpty());assertThrows(DomainException.class,()->services.workOrders().create(t,new WorkOrderInput("拒绝","test")));assertThrows(DomainException.class,()->services.workOrders().delete(t,before.get(0).id()));assertEquals(before,services.workOrders().list(t,"",""));}
     @Test void TC06to07_staffCreatePersistsButCannotDelete(){String t=login("staff");WorkOrder w=services.workOrders().create(t,new WorkOrderInput("维修灯具","教室 A101"));assertThrows(DomainException.class,()->services.workOrders().delete(t,w.id()));Services.Bundle reopened=ApplicationFactory.open(db);String other=reopened.authentication().login("staff","Demo@12345".toCharArray()).token();assertTrue(reopened.workOrders().list(other,"维修灯具","").stream().anyMatch(x->x.id()==w.id()));}
-    @Test void TC08to09_managerAssignsButCannotGrant(){String manager=login("manager");long id=services.workOrders().list(manager,"","").get(0).id();User assignee=services.workOrders().assignees(manager).stream().filter(u->u.username().equals("staff")).findFirst().orElseThrow();services.workOrders().assign(manager,id,assignee.id());assertEquals(assignee.id(),services.workOrders().list(manager,Long.toString(id),"").get(0).assigneeId());assertThrows(DomainException.class,()->services.roles().setPermissions(manager,1,Set.of()));}
+    @Test void TC08to09_managerAssignsButCannotGrantOrAssignSystemAdministrator(){
+        String manager=login("manager"),admin=login("admin");
+        long id=services.workOrders().list(manager,"","").get(0).id();
+        User assignee=services.workOrders().assignees(manager).stream().filter(u->u.username().equals("staff")).findFirst().orElseThrow();
+        assertFalse(services.workOrders().assignees(manager).stream().anyMatch(u->u.username().equals("admin")));
+        User systemAdministrator=services.users().list(admin).stream().filter(u->u.username().equals("admin")).findFirst().orElseThrow();
+        services.workOrders().assign(manager,id,assignee.id());
+        assertEquals(assignee.id(),services.workOrders().list(manager,Long.toString(id),"").get(0).assigneeId());
+        assertThrows(DomainException.class,()->services.workOrders().assign(manager,id,systemAdministrator.id()));
+        assertThrows(DomainException.class,()->services.roles().setPermissions(manager,1,Set.of()));
+    }
     @Test void TC10to13_grantAndRevokeApplyToExistingSession(){
         String a=login("admin"),s=login("staff");
         long r=role(a,"STAFF"),p=permission(a,"workorder:delete");

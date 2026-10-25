@@ -173,36 +173,43 @@ public final class CampusApplication {
         revision++;
         main.removeAll();
         JPanel heading = new JPanel(new BorderLayout(0, 8)); heading.setOpaque(false);
-        JLabel label = new JLabel(title); label.setFont(label.getFont().deriveFont(Font.BOLD, 24));
+        JLabel label = new JLabel(title); label.setFont(label.getFont().deriveFont(Font.BOLD, 22));
         label.setForeground(INK); heading.add(label, BorderLayout.NORTH);
-        JLabel subtitle = new JLabel(description); subtitle.setForeground(MUTED);
-        heading.add(subtitle, BorderLayout.SOUTH); main.add(heading, BorderLayout.NORTH);
+        if (!description.isBlank()) {
+            JLabel subtitle = new JLabel(description); subtitle.setForeground(MUTED);
+            heading.add(subtitle, BorderLayout.SOUTH);
+        }
+        main.add(heading, BorderLayout.NORTH);
         JPanel body = new JPanel(new BorderLayout(0, 12)); body.setOpaque(false);
         main.add(body, BorderLayout.CENTER); main.revalidate(); main.repaint(); return body;
     }
 
     private void dashboard() {
-        JPanel body = page("欢迎，" + session.user().displayName(), "选择左侧菜单开始工作。当前权限来自角色的权限并集。");
-        JPanel identity = card("当前身份", "账号：" + session.user().username() + "    角色："
-                + roleDescription()
-                + "\n已授予 " + session.permissions().size() + " 项权限。权限调整后，点击左下方“刷新权限”更新界面。");
-        identity.setName("dashboard.identity"); body.add(identity, BorderLayout.NORTH);
-        JPanel capabilities = new JPanel(new GridLayout(2, 2, 14, 14)); capabilities.setOpaque(false);
+        JPanel body = page("工作台", "");
+        JPanel identity = card("当前账号", session.user().username() + "  ·  " + roleDescription()
+                + "  ·  " + session.permissions().size() + " 项权限");
+        identity.setName("dashboard.identity");
+        JPanel capabilities = new JPanel(new GridLayout(2, 2, 10, 10)); capabilities.setOpaque(false);
         capabilities.add(card("可访问页面", capabilityText("page:")));
         capabilities.add(card("工单协作", capabilityText("workorder:")));
         capabilities.add(card("用户与角色管理", capabilityText("user:", "role:", "permission:")));
         capabilities.add(card("统计与审计", capabilityText("report:", "audit:")));
-        body.add(capabilities);
-        JLabel help = new JLabel("提示：灰色按钮表示当前账号无权执行；将鼠标停留在按钮上可查看原因。");
-        help.setForeground(MUTED); body.add(help, BorderLayout.SOUTH);
+        JPanel overview = new JPanel(); overview.setOpaque(false);
+        overview.setLayout(new BoxLayout(overview, BoxLayout.Y_AXIS));
+        identity.setAlignmentX(Component.LEFT_ALIGNMENT);
+        identity.setMaximumSize(new Dimension(Integer.MAX_VALUE, identity.getPreferredSize().height));
+        capabilities.setAlignmentX(Component.LEFT_ALIGNMENT);
+        capabilities.setMaximumSize(new Dimension(Integer.MAX_VALUE, capabilities.getPreferredSize().height));
+        overview.add(identity); overview.add(Box.createVerticalStrut(10)); overview.add(capabilities);
+        body.add(overview, BorderLayout.NORTH);
     }
 
     private String capabilityText(String... prefixes) {
         List<String> labels = session.permissions().stream().sorted()
                 .filter(code -> Arrays.stream(prefixes).anyMatch(code::startsWith))
                 .map(code -> PERMISSION_LABELS.getOrDefault(code, "其他已授予能力"))
-                .distinct().map(label -> "• " + label).toList();
-        return labels.isEmpty() ? "当前角色暂未获得此类能力。" : String.join("\n", labels);
+                .distinct().toList();
+        return labels.isEmpty() ? "无" : String.join(" · ", labels);
     }
 
     private String roleDescription() {
@@ -212,7 +219,7 @@ public final class CampusApplication {
     }
 
     private void workOrders() {
-        JPanel body = page("工单管理", "搜索、分派与跟踪校园事务。选择表格中的一条工单后操作。");
+        JPanel body = page("工单管理", "");
         JPanel toolbar = toolbar(), search = toolbar(); JTextField query = new JTextField(22);
         query.setName("workorders.query"); query.setToolTipText("搜索工单标题或内容，按回车查询");
         JComboBox<String> filter = new JComboBox<>(new String[]{"全部状态", "待处理", "处理中", "已完成", "已关闭"});
@@ -273,12 +280,12 @@ public final class CampusApplication {
         controls.add(search); controls.add(toolbar);
         String capabilities = session.permissions().stream().filter(code -> code.startsWith("workorder:"))
                 .sorted().map(code -> PERMISSION_LABELS.getOrDefault(code, "其他工单能力")).collect(java.util.stream.Collectors.joining(" · "));
-        JLabel ability = new JLabel("当前可操作：" + (capabilities.isEmpty() ? "暂无工单权限" : capabilities));
+        JLabel ability = new JLabel("可操作：" + (capabilities.isEmpty() ? "无" : capabilities));
         ability.setName("workorders.capabilities"); ability.setForeground(ACCENT); ability.setBorder(new EmptyBorder(8, 8, 4, 8));
         JPanel abilityRow = new JPanel(new BorderLayout()); abilityRow.setOpaque(false); abilityRow.add(ability); controls.add(abilityRow);
         body.add(controls, BorderLayout.NORTH); body.add(new JScrollPane(table));
         JTextArea detail = new JTextArea(3, 30); detail.setEditable(false); detail.setLineWrap(true); detail.setWrapStyleWord(true);
-        detail.setName("workorders.detail"); detail.setText("选择一条工单，查看完整描述。");
+        detail.setName("workorders.detail"); detail.setText("请选择工单");
         detail.setBorder(new EmptyBorder(8, 10, 8, 10));
         JLabel detailHeading = new JLabel("工单详情"); detailHeading.setBorder(new EmptyBorder(0, 0, 6, 0));
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -287,7 +294,7 @@ public final class CampusApplication {
                 WorkOrder selected = rows.get(table.convertRowIndexToModel(index));
                 detail.setText(selected.content()); detail.setCaretPosition(0);
                 detailHeading.setText("工单 #" + selected.id() + " · " + selected.title() + " · " + selected.status());
-            } else { detail.setText("选择一条工单，查看完整描述。"); detailHeading.setText("工单详情"); }
+            } else { detail.setText("请选择工单"); detailHeading.setText("工单详情"); }
         });
         JPanel detailPanel = new JPanel(new BorderLayout()); detailPanel.setOpaque(false);
         detailPanel.add(detailHeading, BorderLayout.NORTH); detailPanel.add(new JScrollPane(detail));
@@ -309,7 +316,7 @@ public final class CampusApplication {
     }
 
     private void users() {
-        JPanel body = page("用户管理", "管理账号、启停状态及用户角色。系统会保护最后一个完整管理员。");
+        JPanel body = page("用户管理", "");
         JPanel toolbar = toolbar(); DefaultTableModel model = model("编号", "用户名", "显示名称", "状态", "角色");
         JTable table = table(model); List<User> rows = new ArrayList<>(); String token = session.token();
         Runnable reload = () -> run(() -> services.users().list(token), data -> {
@@ -357,12 +364,12 @@ public final class CampusApplication {
     }
 
     private void roles() {
-        JPanel body = page("角色与权限", "通过角色关联权限。菜单、页面和操作权限分别授权。");
+        JPanel body = page("角色与权限", "");
         JPanel toolbar = toolbar(); DefaultTableModel model = model("编号", "角色编码", "角色名称");
         JTable table = table(model); table.setName("roles.table"); List<Role> rows = new ArrayList<>(); String token = session.token();
         JPanel permissionDetail = new JPanel(new BorderLayout(0, 12)); permissionDetail.setBackground(Color.WHITE);
         permissionDetail.setBorder(new EmptyBorder(16, 16, 16, 16));
-        JLabel summary = new JLabel("选择角色，查看已授予的权限"); summary.setName("roles.permission.summary");
+        JLabel summary = new JLabel("请选择角色"); summary.setName("roles.permission.summary");
         summary.setForeground(INK); summary.setFont(summary.getFont().deriveFont(Font.BOLD, 16));
         permissionDetail.add(summary, BorderLayout.NORTH);
         long[] selectionVersion = {0};
@@ -373,13 +380,13 @@ public final class CampusApplication {
             Component old = ((BorderLayout) permissionDetail.getLayout()).getLayoutComponent(BorderLayout.CENTER);
             if (old != null) permissionDetail.remove(old);
             if (selected < 0 || table.convertRowIndexToModel(selected) >= rows.size()) {
-                summary.setText("选择角色，查看已授予的权限"); permissionDetail.revalidate(); permissionDetail.repaint(); return;
+                summary.setText("请选择角色"); permissionDetail.revalidate(); permissionDetail.repaint(); return;
             }
             Role role = rows.get(table.convertRowIndexToModel(selected));
             summary.setText(role.name() + " · 正在读取权限…");
             run(() -> new PermissionChoices(services.roles().permissions(token), services.roles().permissionIds(token, role.id())), data -> {
                 if (selectionVersion[0] != expected) return; // 快速切换角色时，丢弃前一角色的数据。
-                summary.setText(role.name() + " · 已授予 " + data.selected().size() + " 项权限");
+                summary.setText(role.name() + " · " + data.selected().size() + " 项权限");
                 permissionDetail.add(permissionTabs(data, false, new LinkedHashMap<>()), BorderLayout.CENTER);
                 permissionDetail.revalidate(); permissionDetail.repaint();
             });
@@ -420,10 +427,7 @@ public final class CampusApplication {
                 Map<Long, JCheckBox> boxes = new LinkedHashMap<>();
                 JTabbedPane tabs = permissionTabs(data, true, boxes); tabs.setPreferredSize(new Dimension(650, 420));
                 tabs.setSelectedIndex(2);
-                JPanel editor = new JPanel(new BorderLayout(0, 10));
-                editor.add(new JLabel("勾选要授予此角色的权限；菜单、页面与操作需要分别配置。"), BorderLayout.NORTH);
-                editor.add(tabs);
-                if (dialog("配置权限 · " + role.name(), editor)) {
+                if (dialog("配置权限 · " + role.name(), tabs)) {
                     Set<Long> ids = checked(boxes);
                     change(() -> { services.roles().setPermissions(token, role.id(), ids); return true; }, reload);
                 }
@@ -438,11 +442,9 @@ public final class CampusApplication {
         JTabbedPane tabs = new JTabbedPane(); tabs.setName(editable ? "permissions.editor.groups" : "roles.permission.groups");
         String[] types = {"MENU", "PAGE", "ACTION"};
         String[] titles = {"菜单权限", "页面权限", "操作权限"};
-        String[] hints = {"控制左侧菜单是否显示", "控制能否进入相应页面", "控制可以执行的查询、修改和授权操作"};
         for (int i = 0; i < types.length; i++) {
             String type = types[i]; JPanel list = choicesPanel(); list.setBackground(Color.WHITE);
             list.setBorder(new EmptyBorder(12, 12, 12, 12)); list.setName("permissions.group." + type);
-            JLabel hint = new JLabel(hints[i]); hint.setForeground(MUTED); list.add(hint); list.add(Box.createVerticalStrut(12));
             int count = 0;
             for (Permission permission : data.permissions()) {
                 if (!type.equals(permission.type())) continue;
@@ -465,7 +467,7 @@ public final class CampusApplication {
     }
 
     private void reports() {
-        JPanel body = page("工单统计", "实时查看各处理状态下的工单数量。");
+        JPanel body = page("工单统计", "");
         JPanel toolbar = toolbar(); DefaultTableModel model = model("状态", "数量");
         String token = session.token();
         Runnable reload = () -> run(() -> services.reports().statistics(token), data -> {
@@ -477,7 +479,7 @@ public final class CampusApplication {
     }
 
     private void audit() {
-        JPanel body = page("审计日志", "追踪登录、授权变更、业务操作和被拒绝的请求。");
+        JPanel body = page("审计日志", "");
         JPanel toolbar = toolbar(); JTextField query = new JTextField(25);
         toolbar.add(new JLabel("关键字")); toolbar.add(query);
         DefaultTableModel model = model("编号", "时间", "操作人", "操作", "对象", "结果", "说明");
@@ -566,9 +568,9 @@ public final class CampusApplication {
         panel.setBackground(Color.WHITE); return panel;
     }
     private static JPanel card(String title, String description) {
-        JPanel panel = new JPanel(new BorderLayout(0, 10)); panel.setBackground(Color.WHITE);
-        panel.setBorder(new EmptyBorder(14, 18, 14, 18));
-        JLabel heading = new JLabel(title); heading.setFont(heading.getFont().deriveFont(Font.BOLD, 16)); heading.setForeground(INK);
+        JPanel panel = new JPanel(new BorderLayout(0, 6)); panel.setBackground(Color.WHITE);
+        panel.setBorder(new EmptyBorder(12, 14, 12, 14));
+        JLabel heading = new JLabel(title); heading.setFont(heading.getFont().deriveFont(Font.BOLD, 15)); heading.setForeground(INK);
         JTextArea text = new JTextArea(description); text.setEditable(false); text.setLineWrap(true); text.setWrapStyleWord(true);
         text.setForeground(MUTED); text.setOpaque(false); panel.add(heading, BorderLayout.NORTH); panel.add(text); return panel;
     }

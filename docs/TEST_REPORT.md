@@ -62,7 +62,7 @@ java "-Dfile.encoding=UTF-8" -jar target\campus-work-order-rbac.jar --help
 | TC05 VIEWER 不能删除 | 通过 | AcceptanceTest |
 | TC06 STAFF 新增并持久 | 通过 | AcceptanceTest 重开数据库验证 |
 | TC07 STAFF 不能删除 | 通过 | AcceptanceTest |
-| TC08 MANAGER 分派 | 通过 | AcceptanceTest |
+| TC08 MANAGER 分派 | 通过 | AcceptanceTest：可分派 STAFF，负责人列表不含 ADMIN，直调 Service 分派 ADMIN 被拒绝 |
 | TC09 MANAGER 不能配置权限 | 通过 | AcceptanceTest、SecurityTest |
 | TC10 ADMIN 给 STAFF 增加删除权 | 通过 | AcceptanceTest、GuiDatabaseTest 权限弹窗 |
 | TC11 刷新/旧会话获得新增权限 | 通过 | AcceptanceTest、GuiDatabaseTest 按钮启用 |
