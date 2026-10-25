@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="310" viewBox="0 0 1200 310">
+<style>text{font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18324d}.box{fill:#f8fbff;stroke:#2b6da6;stroke-width:2}.accent{fill:#e5f0fa}.arrow{stroke:#2b6da6;stroke-width:2.5;marker-end:url(#a)}</style>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2b6da6"/></marker></defs>
+<rect x="20" y="100" width="150" height="72" rx="10" class="box accent"/><text x="95" y="132" text-anchor="middle" font-size="21">用户操作</text><text x="95" y="157" text-anchor="middle" font-size="15">点击、输入、确认</text>
+<rect x="215" y="100" width="170" height="72" rx="10" class="box"/><text x="300" y="132" text-anchor="middle" font-size="21">ActionListener</text><text x="300" y="157" text-anchor="middle" font-size="15">界面事件入口</text>
+<rect x="430" y="84" width="180" height="104" rx="10" class="box accent"/><text x="520" y="120" text-anchor="middle" font-size="21">BackgroundAction</text><text x="520" y="146" text-anchor="middle" font-size="16">SwingWorker 后台执行</text><text x="520" y="169" text-anchor="middle" font-size="15">EDT 回调更新界面</text>
+<rect x="655" y="100" width="145" height="72" rx="10" class="box"/><text x="728" y="132" text-anchor="middle" font-size="21">Service</text><text x="728" y="157" text-anchor="middle" font-size="15">业务接口</text>
+<rect x="845" y="100" width="145" height="72" rx="10" class="box accent"/><text x="918" y="132" text-anchor="middle" font-size="21">Access</text><text x="918" y="157" text-anchor="middle" font-size="15">会话与授权</text>
+<rect x="1035" y="100" width="145" height="72" rx="10" class="box"/><text x="1108" y="132" text-anchor="middle" font-size="21">SQLite</text><text x="1108" y="157" text-anchor="middle" font-size="15">JDBC 与事务</text>
+<line x1="170" y1="136" x2="214" y2="136" class="arrow"/><line x1="385" y1="136" x2="429" y2="136" class="arrow"/><line x1="610" y1="136" x2="654" y2="136" class="arrow"/><line x1="800" y1="136" x2="844" y2="136" class="arrow"/><line x1="990" y1="136" x2="1034" y2="136" class="arrow"/>
+<text x="600" y="245" text-anchor="middle" font-size="17">UI 只呈现能力；Service 与 Access 在每次调用时依据数据库当前关系作最终授权判断。</text>
+</svg>

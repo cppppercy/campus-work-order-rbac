@@ -1,26 +1,25 @@
-# 作业要求映射
+# 作业要求与实现映射
 
-| 要求 | 实现位置与验证 |
+## 教师核心要求的实现
+
+| 核心要求 | 当前实现与证据 |
 |---|---|
-| RBAC 用户、角色、权限及多对多关系 | `schema.sql` 的五张 RBAC 表；`SecurityServices`；DatabaseTest |
-| 授权关系来自数据库 | `Access.effectivePermissions` 每次查询关联表；AcceptanceTest TC10–TC15 |
-| Java Swing 事件监听 | `CampusApplication` 的显式 `ActionListener`；`BackgroundAction`；GuiEventTest |
-| 不同角色菜单和同页按钮不同 | `CampusApplication.allowed/action/nav`；GuiTest、GuiDatabaseTest 和真实截图 |
-| 防止绕过 UI 越权 | `Access.read/write`；AcceptanceTest TC13、SecurityTest |
-| 动态授权与撤销 | 角色权限复选框；刷新权限；旧会话即时撤权测试 |
-| 用户和角色管理 | `SecurityServices.UsersImpl/RolesImpl` 及两个管理页面 |
-| 工单真实 CRUD | `BusinessServices`、`WorkOrderRepository`；AcceptanceTest |
-| 分派、状态、筛选、统计、导出 | 工单和统计 Service/UI；CSV 转义测试 |
-| SQLite 外键、约束、参数化 SQL | `schema.sql`、DAO 和 Service；DatabaseTest |
-| 初始化幂等且数据持久 | `schema_version`；DatabaseTest、AcceptanceTest TC15/TC19 |
-| 密码安全摘要 | `Passwords`；DatabaseTest |
-| 多表授权事务 | `Database.write` + `Access`；SecurityTest 原子回滚用例 |
-| 最后管理员保护 | `ensureAdministrator`；SecurityTest 覆盖停用、删除、撤角色、撤权限、删角色 |
-| 审计成功与拒绝 | `audit_logs`、`Access.audit/record`、审计页；TC18 |
-| EDT 线程规则 | `BackgroundAction`；GuiEventTest 验证后台执行与回调线程 |
-| RBAC0–RBAC3 分析 | `docs/RBAC_ANALYSIS.md` |
-| 可运行 JAR 与说明 | Shade 插件、`run.cmd/run.sh`、README；JAR `--init-only` 启动验证 |
-| 自动化测试 TC01–TC20 | DatabaseTest、AcceptanceTest、SecurityTest、GuiEventTest、GUI profile；`docs/TEST_REPORT.md` |
-| 中文报告与演示步骤 | DESIGN、RBAC_ANALYSIS、COURSE_REPORT、DEMO、TEST_REPORT |
+| 完整 RBAC 应用代码 | Java 17、Swing、SQLite JDBC 源码位于 `src/`；可执行 JAR 由 Maven Shade 生成 |
+| 角色与权限页面操作展示 | 登录、工单、用户、角色与权限、统计、审计页面；真实截图位于 `docs/images/` |
+| 分析菜单、页面、按钮与业务层差异 | 主报告第 5 节的四层控制表；`Access.read/write` 为最终边界 |
+| 授权关系数据库持久化 | `user_roles`、`role_permissions`；重启不会恢复已撤销授权 |
+| 监听器与事件响应 | `CampusApplication` 的 `ActionListener` 与 `BackgroundAction`/`SwingWorker`；`GuiEventTest` 覆盖线程行为 |
 
-课程要求的所有核心项均有实现与证据。GUI 的授权复选框弹窗、用户编辑弹窗等模态交互由课堂演示手动操作；自动 GUI 验收覆盖真实登录、菜单差异、工单按钮差异、页面加载和截图。
+## 本项目完成的 RBAC1 扩展
+
+以下内容是本项目在基础作业之上完成的 RBAC1 扩展，不把它们表述为教师逐字规定的评分项。
+
+- `role_hierarchy` 表和数据库版本 2 迁移；
+- 高级角色到低级角色的递归权限继承、来源显示与动态撤销；
+- 自继承、重复关系和循环继承拒绝；
+- 角色删除时的关系级联清理和最后有效管理员保护；
+- `RoleHierarchyTest` 的真实 SQLite 覆盖，以及 GUI 角色继承配置弹窗测试与截图。
+
+## 验证范围
+
+最近一次 `mvnw.cmd clean verify` 通过 42 项非 GUI 测试；在当前图形环境执行 `mvnw.cmd -Pgui-tests test` 通过 3 项 GUI 测试。完整命令、分类和限制见 `docs/TEST_REPORT.md`。

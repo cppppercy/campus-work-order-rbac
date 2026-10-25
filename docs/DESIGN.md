@@ -1,36 +1,23 @@
-# 系统设计
+# 系统设计补充
 
-## 分层
+## 分层与权限边界
 
-- `ui`：Swing 页面、菜单、对话框和显示格式；不直接访问数据库。
-- `event`：`BackgroundAction` 把 `ActionListener` 的耗时工作放入 `SwingWorker`，结果在 EDT 回调。
-- `service`：认证、用户、角色、权限、工单、统计、审计接口。
-- `infrastructure`：SQLite 事务、会话注册表、密码散列和 `Access` 统一授权。
-- `model`：不可变记录对象。
+`ui` 仅负责 Swing 页面、导航和控件状态；`event` 的 `BackgroundAction` 将耗时任务交给 `SwingWorker`；`service` 定义认证、角色、工单、统计和审计接口；`infrastructure` 中的 `Access` 从可信会话和数据库当前状态完成最终授权；SQLite JDBC 负责持久化与事务。UI 不直接访问数据库。
 
-## RBAC1 数据流
+![系统分层](images/diagrams/architecture.svg)
 
-```mermaid
-flowchart LR
-    U[用户] --> UR[user_roles]
-    UR --> R[直接角色]
-    R --> RH[role_hierarchy
-高级角色到下级角色]
-    RH --> JR[可达角色]
-    R --> RP[role_permissions]
-    JR --> RP
-    RP --> P[有效权限并集]
-    P --> A[Access 服务层授权]
-```
+## RBAC1 数据模型
 
-`Access.effectivePermissions` 通过 SQLite `WITH RECURSIVE` 计算可达角色和去重后的权限。`Roles.effectivePermissions` 另外返回每项权限的直接/继承来源，供角色页面显示。
+`role_hierarchy(senior_role_id, junior_role_id)` 表达“高级角色继承低级角色”。表以两列为联合主键、引用 `roles(id)` 并使用 `ON DELETE CASCADE`，另有 `CHECK (senior_role_id <> junior_role_id)`。服务层以递归 CTE 检查可达性，拒绝形成环。
+
+![RBAC ER 图](images/diagrams/er-diagram.svg)
 
 ## 迁移和事务
 
-`Database.initialize()` 读取 `schema_version`。新库建立基础模式和数据后执行 `migration_v2.sql`；版本 1 数据库只执行该迁移；版本 2 重启不重复执行。迁移创建带外键、复合主键、自继承检查和索引的 `role_hierarchy`。
+`Database.initialize()` 在版本 1 数据库执行 `migration_v2.sql`，在版本 2 重启时保持幂等。迁移只增加结构和版本记录，不重置业务数据或已有授权。层次、用户角色与角色权限写操作均通过 `Access.write`：同一 `BEGIN IMMEDIATE` 事务中依次完成当前授权、校验、写入、最后管理员检查和 SUCCESS 审计；失败回滚，DENIED 审计另行保存。
 
-所有层次写操作复用 `Access.write`：同一 `BEGIN IMMEDIATE` 事务内完成当前授权检查、角色/环校验、关系写入、最后管理员检查和成功审计。任一步失败都会回滚；拒绝审计在回滚后独立记录。
+## 事件流程
 
-## UI 设计
+![删除工单事件流程](images/diagrams/event-flow.svg)
 
-角色页显示有效权限总数、直属下级，以及按 MENU/PAGE/ACTION 分组的权限来源；“配置继承”弹窗清楚说明当前角色为高级角色。工单与审计页面仅在显示时把 ISO 时间转换为 `yyyy-MM-dd HH:mm:ss`，数据库原始时间不变。
+退出登录后旧异步回调被丢弃，数据库操作和密码计算不阻塞 EDT。角色页面通过 `Services.Roles` 查询直接/继承来源，不在 UI 中硬编码数据库授权关系。

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="670" viewBox="0 0 1200 670">
+<style>text{font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#17324d}.t{font-size:21px;font-weight:bold}.s{font-size:15px}.box{fill:#fbfdff;stroke:#276da3;stroke-width:2}.rel{stroke:#5b7b99;stroke-width:2}</style>
+<rect x="55" y="60" width="200" height="120" rx="8" class="box"/><text x="75" y="92" class="t">users</text><text x="75" y="121" class="s">id, username, active</text><text x="75" y="147" class="s">password_hash</text>
+<rect x="445" y="60" width="200" height="120" rx="8" class="box"/><text x="465" y="92" class="t">roles</text><text x="465" y="121" class="s">id, code, name</text>
+<rect x="880" y="60" width="230" height="120" rx="8" class="box"/><text x="900" y="92" class="t">permissions</text><text x="900" y="121" class="s">id, code, name, type</text>
+<rect x="280" y="270" width="190" height="105" rx="8" class="box"/><text x="300" y="302" class="t">user_roles</text><text x="300" y="331" class="s">user_id, role_id</text>
+<rect x="680" y="270" width="225" height="105" rx="8" class="box"/><text x="700" y="302" class="t">role_permissions</text><text x="700" y="331" class="s">role_id, permission_id</text>
+<rect x="455" y="455" width="250" height="120" rx="8" class="box"/><text x="475" y="487" class="t">role_hierarchy</text><text x="475" y="516" class="s">senior_role_id</text><text x="475" y="542" class="s">junior_role_id</text>
+<rect x="50" y="475" width="200" height="100" rx="8" class="box"/><text x="70" y="507" class="t">work_orders</text><text x="70" y="536" class="s">creator_id, assignee_id</text>
+<rect x="900" y="475" width="200" height="100" rx="8" class="box"/><text x="920" y="507" class="t">audit_logs</text><text x="920" y="536" class="s">actor_id, action, result</text>
+<line x1="255" y1="120" x2="280" y2="300" class="rel"/><line x1="445" y1="120" x2="470" y2="300" class="rel"/><line x1="645" y1="120" x2="680" y2="300" class="rel"/><line x1="880" y1="120" x2="905" y2="300" class="rel"/><line x1="545" y1="180" x2="550" y2="455" class="rel"/><line x1="580" y1="180" x2="610" y2="455" class="rel"/><line x1="155" y1="180" x2="150" y2="475" class="rel"/><line x1="990" y1="180" x2="1000" y2="475" class="rel"/>
+<text x="600" y="635" text-anchor="middle" class="s">核心 RBAC 关系使用关联表持久化；role_hierarchy 是版本 2 新增的 RBAC1 层次关系。</text>
+</svg>

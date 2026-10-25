@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+<style>text{font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18324d}.h{font-size:20px;font-weight:bold}.s{font-size:16px}.line{stroke:#44749c;stroke-width:2;stroke-dasharray:5 5}.a{stroke:#2d6ca2;stroke-width:2.5;marker-end:url(#m)}.note{fill:#f5f9fd;stroke:#a9c7df}</style>
+<defs><marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2d6ca2"/></marker></defs>
+<text x="100" y="40" text-anchor="middle" class="h">用户</text><text x="330" y="40" text-anchor="middle" class="h">ActionListener</text><text x="570" y="40" text-anchor="middle" class="h">SwingWorker</text><text x="815" y="40" text-anchor="middle" class="h">Service / Access</text><text x="1080" y="40" text-anchor="middle" class="h">SQLite</text>
+<line x1="100" y1="55" x2="100" y2="385" class="line"/><line x1="330" y1="55" x2="330" y2="385" class="line"/><line x1="570" y1="55" x2="570" y2="385" class="line"/><line x1="815" y1="55" x2="815" y2="385" class="line"/><line x1="1080" y1="55" x2="1080" y2="385" class="line"/>
+<line x1="105" y1="95" x2="325" y2="95" class="a"/><text x="215" y="84" text-anchor="middle" class="s">点击“删除工单”</text>
+<line x1="335" y1="145" x2="565" y2="145" class="a"/><text x="450" y="134" text-anchor="middle" class="s">启动后台任务</text>
+<line x1="575" y1="195" x2="810" y2="195" class="a"/><text x="692" y="184" text-anchor="middle" class="s">可信令牌与工单编号</text>
+<line x1="820" y1="245" x2="1075" y2="245" class="a"/><text x="947" y="234" text-anchor="middle" class="s">授权查询、删除、审计</text>
+<line x1="1075" y1="295" x2="820" y2="295" class="a"/><text x="947" y="284" text-anchor="middle" class="s">提交或拒绝</text>
+<line x1="810" y1="345" x2="575" y2="345" class="a"/><line x1="565" y1="370" x2="335" y2="370" class="a"/><text x="450" y="360" text-anchor="middle" class="s">EDT 更新表格和提示</text>
+<rect x="25" y="395" width="1150" height="28" rx="5" class="note"/><text x="600" y="415" text-anchor="middle" class="s">耗时 JDBC 操作不在 EDT 执行；服务层才是最终的权限边界，拒绝操作也会记录审计。</text>
+</svg>
