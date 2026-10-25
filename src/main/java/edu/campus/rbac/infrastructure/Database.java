@@ -37,8 +37,9 @@ public final class Database {
                  ResultSet result = statement.executeQuery("SELECT MAX(version) FROM schema_version")) {
                 if (result.next()) {
                     int version = result.getInt(1);
-                    if (version > 1) throw new DomainException("数据库版本高于当前程序支持的版本");
-                    if (version == 1) return null;
+                    if (version > 2) throw new DomainException("数据库版本高于当前程序支持的版本");
+                    if (version == 2) return null;
+                    if (version == 1) { executeScript(connection, "migration_v2.sql"); return null; }
                 }
             }
             // 只有全新数据库生成演示密码；重启不补回用户、角色或撤销的权限。
@@ -62,6 +63,7 @@ public final class Database {
                 insert.setString(1, Instant.now().toString());
                 insert.executeUpdate();
             }
+            executeScript(connection, "migration_v2.sql");
             return null;
         });
     }

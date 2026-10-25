@@ -8,6 +8,8 @@ public final class Models {
     public record User(long id, String username, String displayName, boolean active, List<String> roles) {}
     public record Role(long id, String code, String name) {}
     public record Permission(long id, String code, String name, String type) {}
+    /** A role's effective permission and the relationship(s) that supply it. */
+    public record RolePermissionGrant(Permission permission, boolean direct, boolean inherited) {}
     public record Session(String token, User user, Set<String> permissions) {}
     public record WorkOrder(long id, String title, String content, long creatorId, String creatorName,
                             Long assigneeId, String assigneeName, String status, String createdAt, String updatedAt) {}

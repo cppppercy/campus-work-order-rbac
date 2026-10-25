@@ -30,7 +30,12 @@ public final class Services {
         void delete(String token, long roleId);
         List<Permission> permissions(String token);
         Set<Long> permissionIds(String token, long roleId);
+        List<RolePermissionGrant> effectivePermissions(String token, long roleId);
         void setPermissions(String token, long roleId, Set<Long> permissionIds);
+        List<Role> juniorRoles(String token, long roleId);
+        void addInheritance(String token, long seniorRoleId, long juniorRoleId);
+        void removeInheritance(String token, long seniorRoleId, long juniorRoleId);
+        void setJuniorRoles(String token, long seniorRoleId, Set<Long> juniorRoleIds);
     }
     public interface WorkOrders {
         List<WorkOrder> list(String token, String query, String status);

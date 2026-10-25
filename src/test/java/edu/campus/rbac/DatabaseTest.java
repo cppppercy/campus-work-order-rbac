@@ -32,7 +32,8 @@ class DatabaseTest {
         assertEquals(41, count("role_permissions"));
         assertEquals(2, count("work_orders"));
         assertEquals(0, count("audit_logs"));
-        assertEquals(1, count("schema_version"));
+        assertEquals(2, count("schema_version"));
+        assertEquals(0, count("role_hierarchy"));
         database.read(connection -> {
             try (Statement statement = connection.createStatement();
                  ResultSet result = statement.executeQuery("PRAGMA foreign_keys")) {

@@ -70,9 +70,11 @@ public final class Access {
 
     public static Set<String> effectivePermissions(Connection connection, long userId) throws SQLException {
         Set<String> permissions = new HashSet<>();
-        try (PreparedStatement p = connection.prepareStatement("SELECT DISTINCT p.code FROM permissions p "
-                + "JOIN role_permissions rp ON rp.permission_id=p.id JOIN user_roles ur ON ur.role_id=rp.role_id "
-                + "WHERE ur.user_id=?")) {
+        try (PreparedStatement p = connection.prepareStatement("WITH RECURSIVE reachable(role_id) AS ("
+                + "SELECT role_id FROM user_roles WHERE user_id=? "
+                + "UNION SELECT h.junior_role_id FROM role_hierarchy h JOIN reachable r ON h.senior_role_id=r.role_id"
+                + ") SELECT DISTINCT p.code FROM permissions p JOIN role_permissions rp ON rp.permission_id=p.id "
+                + "JOIN reachable r ON r.role_id=rp.role_id")) {
             p.setLong(1, userId);
             try (ResultSet r = p.executeQuery()) { while (r.next()) permissions.add(r.getString(1)); }
         }
