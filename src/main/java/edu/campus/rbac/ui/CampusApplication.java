@@ -11,6 +11,9 @@ import java.awt.event.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -234,7 +237,7 @@ public final class CampusApplication {
             run(() -> services.workOrders().list(token, q, st), data -> {
                 rows.clear(); rows.addAll(data); model.setRowCount(0);
                 for (WorkOrder w : data) model.addRow(new Object[]{w.id(), w.title(), w.creatorName(),
-                        Objects.toString(w.assigneeName(), "未分派"), w.status(), w.updatedAt()});
+                        Objects.toString(w.assigneeName(), "未分派"), w.status(), displayTime(w.updatedAt())});
                 statusLine.setText("工单共 " + data.size() + " 条");
             });
         };
@@ -384,10 +387,11 @@ public final class CampusApplication {
             }
             Role role = rows.get(table.convertRowIndexToModel(selected));
             summary.setText(role.name() + " · 正在读取权限…");
-            run(() -> new PermissionChoices(services.roles().permissions(token), services.roles().permissionIds(token, role.id())), data -> {
+            run(() -> new RoleDetail(services.roles().effectivePermissions(token, role.id()),
+                    services.roles().juniorRoles(token, role.id())), data -> {
                 if (selectionVersion[0] != expected) return; // 快速切换角色时，丢弃前一角色的数据。
-                summary.setText(role.name() + " · " + data.selected().size() + " 项权限");
-                permissionDetail.add(permissionTabs(data, false, new LinkedHashMap<>()), BorderLayout.CENTER);
+                summary.setText(role.name() + " · 有效权限 " + data.permissions().size() + " 项 · 直属下级 " + data.juniors().size() + " 个");
+                permissionDetail.add(effectivePermissionDetail(data), BorderLayout.CENTER);
                 permissionDetail.revalidate(); permissionDetail.repaint();
             });
         });
@@ -432,6 +436,21 @@ public final class CampusApplication {
                     change(() -> { services.roles().setPermissions(token, role.id(), ids); return true; }, reload);
                 }
             }))));
+        toolbar.add(action("配置继承", new String[]{"role:manage", "permission:grant", "role:list"}, () -> selected(table, rows, role ->
+            run(() -> new HierarchyChoices(services.roles().list(token), services.roles().juniorRoles(token, role.id())), data -> {
+                Map<Long, JCheckBox> boxes = new LinkedHashMap<>(); JPanel list = choicesPanel(); list.setName("roles.hierarchy.editor");
+                for (Role candidate : data.roles()) if (candidate.id() != role.id()) {
+                    JCheckBox box = new JCheckBox(candidate.name() + "  [" + candidate.code() + "]", data.juniors().stream().anyMatch(r -> r.id() == candidate.id()));
+                    box.setBackground(Color.WHITE); boxes.put(candidate.id(), box); list.add(box);
+                }
+                JPanel content = new JPanel(new BorderLayout(0, 10));
+                JLabel direction = new JLabel("“" + role.name() + "”作为高级角色，继承下列直属下级角色的有效权限。");
+                direction.setForeground(MUTED); content.add(direction, BorderLayout.NORTH); content.add(scrollChoices(list));
+                if (dialog("配置角色继承 · " + role.name(), content)) {
+                    Set<Long> ids = checked(boxes);
+                    change(() -> { services.roles().setJuniorRoles(token, role.id(), ids); return true; }, reload);
+                }
+            }))));
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(table), permissionDetail);
         split.setName("roles.split"); split.setResizeWeight(.40); split.setDividerLocation(340); split.setContinuousLayout(true);
         split.setBorder(null); table.setMinimumSize(new Dimension(240, 100));
@@ -466,6 +485,32 @@ public final class CampusApplication {
         return tabs;
     }
 
+    private static JComponent effectivePermissionDetail(RoleDetail data) {
+        JPanel panel = new JPanel(new BorderLayout(0, 12)); panel.setBackground(Color.WHITE);
+        String juniorNames = data.juniors().isEmpty() ? "无" : data.juniors().stream()
+                .map(role -> role.name() + " [" + role.code() + "]").collect(java.util.stream.Collectors.joining("、"));
+        JLabel juniors = new JLabel("直属下级：" + juniorNames); juniors.setName("roles.direct-juniors"); juniors.setForeground(MUTED);
+        panel.add(juniors, BorderLayout.NORTH);
+        JTabbedPane tabs = new JTabbedPane(); tabs.setName("roles.permission.groups");
+        String[] types = {"MENU", "PAGE", "ACTION"}; String[] titles = {"菜单权限", "页面权限", "操作权限"};
+        for (int i = 0; i < types.length; i++) {
+            JPanel list = choicesPanel(); list.setBackground(Color.WHITE); list.setBorder(new EmptyBorder(12, 12, 12, 12));
+            int count = 0;
+            for (RolePermissionGrant grant : data.permissions()) {
+                if (!types[i].equals(grant.permission().type())) continue;
+                count++;
+                String source = grant.direct() && grant.inherited() ? "直接 + 继承" : grant.direct() ? "直接" : "继承";
+                JLabel item = new JLabel("[" + source + "]  " + grant.permission().name() + "  (" + grant.permission().code() + ")");
+                item.setName("role.permission." + grant.permission().code()); item.setForeground(INK);
+                item.setBorder(new EmptyBorder(7, 0, 7, 0)); list.add(item);
+            }
+            if (count == 0) { JLabel empty = new JLabel("此角色尚无该类有效权限"); empty.setForeground(MUTED); list.add(empty); }
+            JScrollPane scroll = new JScrollPane(list); scroll.setBorder(null); scroll.getVerticalScrollBar().setUnitIncrement(18);
+            tabs.addTab(titles[i] + " (" + count + ")", scroll);
+        }
+        panel.add(tabs); return panel;
+    }
+
     private void reports() {
         JPanel body = page("工单统计", "");
         JPanel toolbar = toolbar(); DefaultTableModel model = model("状态", "数量");
@@ -488,7 +533,7 @@ public final class CampusApplication {
             String q = query.getText().trim();
             run(() -> services.audit().list(token, q), data -> {
                 model.setRowCount(0);
-                for (AuditEntry entry : data) model.addRow(new Object[]{entry.id(), entry.createdAt(), entry.actorName(),
+                for (AuditEntry entry : data) model.addRow(new Object[]{entry.id(), displayTime(entry.createdAt()), entry.actorName(),
                         entry.action(), entry.target(), entry.result(), entry.detail()});
             });
         };
@@ -607,4 +652,10 @@ public final class CampusApplication {
     private record Choice(Long id, String label) { @Override public String toString() { return label; } }
     private record RoleChoices(List<Role> roles, Set<Long> selected) {}
     private record PermissionChoices(List<Permission> permissions, Set<Long> selected) {}
+    private record RoleDetail(List<RolePermissionGrant> permissions, List<Role> juniors) {}
+    private record HierarchyChoices(List<Role> roles, List<Role> juniors) {}
+    private static String displayTime(String value) {
+        try { return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.parse(value)); }
+        catch (RuntimeException ignored) { return value; }
+    }
 }

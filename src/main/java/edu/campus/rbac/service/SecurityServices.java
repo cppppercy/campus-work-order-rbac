@@ -192,6 +192,24 @@ public final class SecurityServices {
                 role(c, id); return ids(c, "SELECT permission_id FROM role_permissions WHERE role_id=?", id);
             });
         }
+        @Override public List<RolePermissionGrant> effectivePermissions(String token, long id) {
+            return access.read(token, "role:effective-permissions", Long.toString(id), Set.of("role:list"), (c, actor) -> {
+                role(c, id);
+                Set<Long> direct = ids(c, "SELECT permission_id FROM role_permissions WHERE role_id=?", id);
+                Set<Long> inherited = inheritedPermissionIds(c, id);
+                List<RolePermissionGrant> result = new ArrayList<>();
+                try (PreparedStatement p = c.prepareStatement("SELECT id,code,name,type FROM permissions ORDER BY type,id");
+                     ResultSet r = p.executeQuery()) {
+                    while (r.next()) {
+                        long permissionId = r.getLong(1);
+                        boolean isDirect = direct.contains(permissionId), isInherited = inherited.contains(permissionId);
+                        if (isDirect || isInherited) result.add(new RolePermissionGrant(
+                                new Permission(permissionId, r.getString(2), r.getString(3), r.getString(4)), isDirect, isInherited));
+                    }
+                }
+                return List.copyOf(result);
+            });
+        }
         @Override public void setPermissions(String token, long id, Set<Long> permissionIds) {
             access.write(token, "role:set-permissions", Long.toString(id), Set.of("permission:grant"), (c, actor) -> {
                 role(c, id); Set<Long> selected = selection(permissionIds);
@@ -207,6 +225,93 @@ public final class SecurityServices {
                 }
                 ensureAdministrator(c); return null;
             });
+        }
+        @Override public List<Role> juniorRoles(String token, long id) {
+            return access.read(token, "role:juniors", Long.toString(id), Set.of("role:list"), (c, actor) -> {
+                role(c, id);
+                return directJuniorRoles(c, id);
+            });
+        }
+        @Override public void addInheritance(String token, long seniorId, long juniorId) {
+            access.write(token, "role:add-inheritance", seniorId + "->" + juniorId,
+                    Set.of("role:manage", "permission:grant"), (c, actor) -> {
+                role(c, seniorId); role(c, juniorId); validateInheritance(c, seniorId, juniorId);
+                try (PreparedStatement p = c.prepareStatement(
+                        "INSERT INTO role_hierarchy(senior_role_id,junior_role_id) VALUES(?,?)")) {
+                    p.setLong(1, seniorId); p.setLong(2, juniorId); p.executeUpdate();
+                }
+                ensureAdministrator(c); return null;
+            });
+        }
+        @Override public void removeInheritance(String token, long seniorId, long juniorId) {
+            access.write(token, "role:remove-inheritance", seniorId + "->" + juniorId,
+                    Set.of("role:manage", "permission:grant"), (c, actor) -> {
+                role(c, seniorId); role(c, juniorId);
+                try (PreparedStatement p = c.prepareStatement(
+                        "DELETE FROM role_hierarchy WHERE senior_role_id=? AND junior_role_id=?")) {
+                    p.setLong(1, seniorId); p.setLong(2, juniorId);
+                    if (p.executeUpdate() != 1) throw new DomainException("继承关系不存在");
+                }
+                ensureAdministrator(c); return null;
+            });
+        }
+        @Override public void setJuniorRoles(String token, long seniorId, Set<Long> juniorRoleIds) {
+            access.write(token, "role:set-juniors", Long.toString(seniorId), Set.of("role:manage", "permission:grant"), (c, actor) -> {
+                role(c, seniorId); Set<Long> selected = selection(juniorRoleIds);
+                for (long juniorId : selected) role(c, juniorId);
+                executeId(c, "DELETE FROM role_hierarchy WHERE senior_role_id=?", seniorId);
+                for (long juniorId : selected) {
+                    validateInheritance(c, seniorId, juniorId);
+                    try (PreparedStatement p = c.prepareStatement(
+                            "INSERT INTO role_hierarchy(senior_role_id,junior_role_id) VALUES(?,?)")) {
+                        p.setLong(1, seniorId); p.setLong(2, juniorId); p.executeUpdate();
+                    }
+                }
+                ensureAdministrator(c); return null;
+            });
+        }
+    }
+
+    private static List<Role> directJuniorRoles(Connection c, long seniorId) throws SQLException {
+        List<Role> result = new ArrayList<>();
+        try (PreparedStatement p = c.prepareStatement("SELECT r.id,r.code,r.name FROM roles r "
+                + "JOIN role_hierarchy h ON h.junior_role_id=r.id WHERE h.senior_role_id=? ORDER BY r.code")) {
+            p.setLong(1, seniorId);
+            try (ResultSet r = p.executeQuery()) {
+                while (r.next()) result.add(new Role(r.getLong(1), r.getString(2), r.getString(3)));
+            }
+        }
+        return List.copyOf(result);
+    }
+    private static Set<Long> inheritedPermissionIds(Connection c, long seniorId) throws SQLException {
+        Set<Long> result = new HashSet<>();
+        try (PreparedStatement p = c.prepareStatement("WITH RECURSIVE descendants(role_id) AS ("
+                + "SELECT junior_role_id FROM role_hierarchy WHERE senior_role_id=? "
+                + "UNION SELECT h.junior_role_id FROM role_hierarchy h JOIN descendants d ON h.senior_role_id=d.role_id"
+                + ") SELECT DISTINCT rp.permission_id FROM role_permissions rp JOIN descendants d ON d.role_id=rp.role_id")) {
+            p.setLong(1, seniorId);
+            try (ResultSet r = p.executeQuery()) {
+                while (r.next()) result.add(r.getLong(1));
+            }
+        }
+        return Set.copyOf(result);
+    }
+    private static void validateInheritance(Connection c, long seniorId, long juniorId) throws SQLException {
+        if (seniorId == juniorId) throw new DomainException("角色不能继承自身");
+        try (PreparedStatement p = c.prepareStatement("WITH RECURSIVE descendants(role_id) AS ("
+                + "SELECT junior_role_id FROM role_hierarchy WHERE senior_role_id=? "
+                + "UNION SELECT h.junior_role_id FROM role_hierarchy h JOIN descendants d ON h.senior_role_id=d.role_id"
+                + ") SELECT 1 FROM descendants WHERE role_id=?")) {
+            p.setLong(1, juniorId); p.setLong(2, seniorId);
+            try (ResultSet r = p.executeQuery()) {
+                if (r.next()) throw new DomainException("该继承关系会形成角色层次循环");
+            }
+        }
+        try (PreparedStatement p = c.prepareStatement("SELECT 1 FROM role_hierarchy WHERE senior_role_id=? AND junior_role_id=?")) {
+            p.setLong(1, seniorId); p.setLong(2, juniorId);
+            try (ResultSet r = p.executeQuery()) {
+                if (r.next()) throw new DomainException("继承关系已存在");
+            }
         }
     }
 

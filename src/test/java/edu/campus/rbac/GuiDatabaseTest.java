@@ -55,6 +55,10 @@ class GuiDatabaseTest {
         await(() -> firstTable() != null && firstTable().getRowCount() == 4);
         await(() -> named("roles.permission.groups") != null);
         capture("admin-roles.png");
+        clickModal("配置继承"); await(() -> modal("dialog.form") != null);
+        assertNotNull(onEdt(() -> named(modal("dialog.form"), "roles.hierarchy.editor")));
+        capture(modalOnEdt("dialog.form"), "admin-role-hierarchy.png");
+        answerModal(false);
 
         click("退出登录");
         await(() -> named("login.submit") != null);
